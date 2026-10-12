@@ -2,74 +2,93 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Hot Food Manager V1</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hot Food Manager V1.1</title>
 <style>
-body{font-family:Arial,sans-serif;max-width:1200px;margin:auto;padding:20px;background:#f4f4f4}
-.card{background:#fff;padding:15px;margin-bottom:15px;border-radius:8px}
+body{font-family:Arial,sans-serif;max-width:1200px;margin:auto;padding:20px;background:#f5f5f5}
+.card{background:#fff;padding:15px;border-radius:8px;margin-bottom:15px}
 input,select,button,textarea{padding:8px;margin:4px}
 table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:8px}
 .green{color:green;font-weight:bold}.amber{color:orange;font-weight:bold}.red{color:red;font-weight:bold}
-textarea{width:100%;height:250px}
+textarea{width:100%;height:220px}
 </style>
 </head>
 <body>
-<h1>🍔 Hot Food Manager V1</h1>
-<div class="card">
+<h1>🍔 Hot Food Manager V1.1</h1>
+<div class='card'>
 <h2>Flight Details</h2>
-<input id="flightNo" placeholder="Flight Number">
-<input id="route" placeholder="Route">
-<button onclick="saveFlight()">Save Flight</button>
+<input id='flightNo' placeholder='Flight Number'>
+<input id='route' placeholder='Route'>
+<button onclick='saveFlight()'>Save</button>
 </div>
-<div class="card">
-<h2>Food Setup</h2>
-<input id="foodName" placeholder="Food Item">
-<input id="foodStock" type="number" placeholder="Opening Stock">
-<button onclick="addFood()">Add Item</button>
-<table><thead><tr><th>Item</th><th>Opening Stock</th><th>Delete</th></tr></thead><tbody id="foodTable"></tbody></table>
+<div class='card'>
+<h2>Food Menu</h2>
+<input id='foodName' placeholder='Food Item'>
+<input id='foodStock' type='number' placeholder='Opening Stock'>
+<button onclick='addFood()'>Add Food</button>
+<table><thead><tr><th>Item</th><th>Opening Stock</th><th>Remaining</th><th>Delete</th></tr></thead><tbody id='foodTable'></tbody></table>
 </div>
-<div class="card">
+<div class='card'>
 <h2>Add Order</h2>
-<input id="seat" placeholder="Seat (12A)">
-<select id="foodSelect"></select>
-<input id="qty" type="number" value="1" min="1">
-<button onclick="addOrder()">Add Order</button>
+<input id='seat' placeholder='Seat e.g. 12A'>
+<select id='foodSelect'></select>
+<input id='qty' type='number' min='1' value='1'>
+<button onclick='addOrder()'>Add Order</button>
 </div>
-<div class="card"><h2>Orders</h2><table><thead><tr><th>Seat</th><th>Item</th><th>Qty</th></tr></thead><tbody id="ordersTable"></tbody></table></div>
-<div class="card"><h2>Stock Levels</h2><div id="stockLevels"></div></div>
-<div class="card"><h2>Cook Off Totals</h2><div id="cookTotals"></div></div>
-<div class="card"><h2>Zone Report</h2><textarea id="zoneReport" readonly></textarea></div>
-<div class="card"><button onclick="exportTxt()">Export Zone Report</button><button onclick="newFlight()">New Flight</button></div>
+<div class='card'>
+<h2>Passenger Summary</h2>
+<div id='summary'></div>
+</div>
+<div class='card'>
+<h2>Cook Off Totals</h2>
+<div id='cookTotals'></div>
+</div>
+<div class='card'>
+<h2>Stock Levels</h2>
+<div id='stockLevels'></div>
+</div>
+<div class='card'>
+<h2>Zone Report</h2>
+<textarea id='zoneReport' readonly></textarea><br>
+<button onclick='copyReport()'>Copy Report</button>
+</div>
 <script>
 let foods=JSON.parse(localStorage.getItem('foods')||'[]');
 let orders=JSON.parse(localStorage.getItem('orders')||'[]');
+flightNo.value=localStorage.getItem('flightNo')||'';
+route.value=localStorage.getItem('route')||'';
 function save(){localStorage.setItem('foods',JSON.stringify(foods));localStorage.setItem('orders',JSON.stringify(orders));}
-function saveFlight(){localStorage.setItem('flightNo',flightNo.value);localStorage.setItem('route',route.value)}
-flightNo.value=localStorage.getItem('flightNo')||'';route.value=localStorage.getItem('route')||'';
-function addFood(){let n=foodName.value.trim();let s=parseInt(foodStock.value);if(!n||isNaN(s))return;foods.push({id:Date.now(),name:n,stock:s});save();render();}
-function addOrder(){let seatVal=seat.value.trim().toUpperCase();let itemId=+foodSelect.value;let q=+qty.value;if(!seatVal)return;let ex=orders.find(o=>o.seat===seatVal&&o.itemId===itemId);if(ex)ex.qty+=q;else orders.push({seat:seatVal,itemId:itemId,qty:q});save();render();}
-function remaining(id){let f=foods.find(x=>x.id===id);let sold=orders.filter(o=>o.itemId===id).reduce((a,b)=>a+b.qty,0);return f.stock-sold;}
-function render(){foodTable.innerHTML='';foodSelect.innerHTML='';foods.forEach(f=>{foodTable.innerHTML+=`<tr><td>${f.name}</td><td>${f.stock}</td><td><button onclick="removeFood(${f.id})">X</button></td></tr>`;foodSelect.innerHTML+=`<option value="${f.id}">${f.name}</option>`});ordersTable.innerHTML='';orders.forEach(o=>{let f=foods.find(x=>x.id===o.itemId);ordersTable.innerHTML+=`<tr><td>${o.seat}</td><td>${f?f.name:''}</td><td>${o.qty}</td></tr>`});let stock='';foods.forEach(f=>{let r=remaining(f.id);let c=r<=2?'red':r<=5?'amber':'green';stock+=`<div class="${c}">${f.name}: ${r} remaining</div>`});stockLevels.innerHTML=stock;let totals={};orders.forEach(o=>{let f=foods.find(x=>x.id===o.itemId);if(f)totals[f.name]=(totals[f.name]||0)+o.qty});cookTotals.innerHTML=Object.keys(totals).map(k=>k+' x '+totals[k]).join('<br>');let grp={};orders.forEach(o=>{let f=foods.find(x=>x.id===o.itemId);if(!grp[o.seat])grp[o.seat]=[];grp[o.seat].push(f.name+' x'+o.qty)});let A=[],B=[],C=[],D=[];Object.keys(grp).sort((a,b)=>parseInt(a)-parseInt(b)).forEach(seat=>{let row=parseInt(seat);let line=seat+' - '+grp[seat].join(', ');if(row<=10)A.push(line);else if(row<=20)B.push(line);else if(row<=30)C.push(line);else D.push(line)});zoneReport.value='FLIGHT: '+(localStorage.getItem('flightNo')||'')+'
-ROUTE: '+(localStorage.getItem('route')||'')+'
+function saveFlight(){localStorage.setItem('flightNo',flightNo.value);localStorage.setItem('route',route.value);render();}
+function remaining(id){const f=foods.find(x=>x.id===id);if(!f)return 0;const sold=orders.filter(o=>o.itemId===id).reduce((a,b)=>a+b.qty,0);return f.stock-sold;}
+function addFood(){const n=foodName.value.trim();const s=parseInt(foodStock.value);if(!n||isNaN(s)) return;foods.push({id:Date.now()+Math.random(),name:n,stock:s});foodName.value='';foodStock.value='';save();render();}
+function deleteFood(id){foods=foods.filter(f=>f.id!==id);orders=orders.filter(o=>o.itemId!==id);save();render();}
+function addOrder(){const seatVal=seat.value.trim().toUpperCase();const itemId=Number(foodSelect.value);const q=parseInt(qty.value)||1;if(!seatVal||!itemId)return; if(q>remaining(itemId)){alert('Not enough stock');return;} let existing=orders.find(o=>o.seat===seatVal&&o.itemId===itemId); if(existing){existing.qty+=q;} else {orders.push({seat:seatVal,itemId:itemId,qty:q});} seat.value=''; qty.value=1; save(); render();}
+function copyReport(){navigator.clipboard.writeText(zoneReport.value);alert('Copied');}
+function render(){foodTable.innerHTML=''; foodSelect.innerHTML='<option value="">Select Food</option>'; foods.forEach(f=>{foodTable.innerHTML+=`<tr><td>${f.name}</td><td>${f.stock}</td><td>${remaining(f.id)}</td><td><button onclick="deleteFood(${f.id})">X</button></td></tr>`; foodSelect.innerHTML+=`<option value="${f.id}">${f.name}</option>`;});
+let grouped={}; let totals={}; orders.forEach(o=>{const f=foods.find(x=>x.id===o.itemId); if(!f)return; if(!grouped[o.seat]) grouped[o.seat]=[]; grouped[o.seat].push(`${f.name} x${o.qty}`); totals[f.name]=(totals[f.name]||0)+o.qty;});
+summary.innerHTML=Object.keys(grouped).sort().map(s=>`<p><b>${s}</b><br>${grouped[s].join('<br>')}</p>`).join('');
+cookTotals.innerHTML=Object.keys(totals).length?Object.keys(totals).map(k=>`${k} x ${totals[k]}`).join('<br>'):'No orders';
+stockLevels.innerHTML=foods.map(f=>{let r=remaining(f.id);let c=r<=2?'red':r<=5?'amber':'green';return `<div class="${c}">${f.name}: ${r} remaining</div>`}).join('');
+let A=[],B=[],C=[],D=[]; Object.keys(grouped).sort((a,b)=>parseInt(a)-parseInt(b)).forEach(seat=>{let row=parseInt(seat);let line=`${seat} - ${grouped[seat].join(', ')}`; if(row<=10)A.push(line); else if(row<=20)B.push(line); else if(row<=30)C.push(line); else D.push(line);});
+zoneReport.value=`FLIGHT: ${flightNo.value}
+ROUTE: ${route.value}
 
 ZONE A (1-10)
-'+A.join('
-')+'
+${A.join('
+')}
 
 ZONE B (11-20)
-'+B.join('
-')+'
+${B.join('
+')}
 
 ZONE C (21-30)
-'+C.join('
-')+'
+${C.join('
+')}
 
 ZONE D (31-40)
-'+D.join('
-');}
-function removeFood(id){foods=foods.filter(f=>f.id!==id);save();render();}
-function exportTxt(){navigator.clipboard.writeText(zoneReport.value);alert('Zone report copied to clipboard');}
-function newFlight(){orders=[];save();render();}
+${D.join('
+')}`;
+}
 render();
 </script>
 </body></html>
